@@ -2,10 +2,12 @@ package main
 
 // import fyne
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"image/color"
 	"log"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -23,7 +25,7 @@ func main() {
 		User:   "bot",
 		Passwd: "bot",
 		Net:    "tcp",
-		Addr:   "192.168.1.13:3306",
+		Addr:   "192.168.1.11:3306",
 		DBName: "go",
 	}
 	var err error
@@ -77,7 +79,7 @@ func main() {
 
 	///// Show data page
 	ShowPage := GoProject.NewWindow("Show Data")
-	ShowPage.Resize(fyne.NewSize(400, 400))
+	ShowPage.Resize(fyne.NewSize(600, 600))
 	ShowPage_title := canvas.NewText("Show Data", color.White)
 	ShowPage_title.TextStyle = fyne.TextStyle{
 		Bold: true,
@@ -98,18 +100,17 @@ func main() {
 	/////////////////////////////////////////////////// End Create Page Form  ///////////////////////////////
 
 	//////////////////////////////////////////////////////////////////(Form 6)########## body of Dlete data page
-	labelDelCom := widget.NewLabel("")
+	labelDelCom := widget.NewLabel("///////")
+	labelCoulmDel := widget.NewLabel("Coulm")
 
 	Table_NameDel := getTablesName()
 	icolDel := 1
 	var coulmDelNames []string
 	var coulmDelType []string
 
-	labelCoulmDel := widget.NewLabel("Coulm")
-
 	/// choose the table you want Delete the data
 	SelectTable_Del := widget.NewSelect(Table_NameDel, func(s string) {
-		coulmDelType, coulmDelNames, err = coulmName_DataType(s)
+		_, coulmDelNames, err = coulmName_DataType(s)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -117,20 +118,25 @@ func main() {
 		labelCoulmDel.Refresh()
 	})
 	SelectTable_Del.SetSelected("Select table")
-	/// choose coulm
+
+	//// Button next the coulm
 	butt_nextCoulmD := widget.NewButton(" Next Coulm ", func() {
 		icolDel++
 		labelCoulmDel.Text = coulmDelNames[icolDel%len(coulmDelNames)]
 		labelCoulmDel.Refresh()
 	})
+
+	//// Button Previc the coulm
 	butt_PrevCoulmD := widget.NewButton(" Previc Coulm ", func() {
 		icolDel--
 		labelCoulmDel.Text = coulmDelNames[icolDel%len(coulmDelNames)]
 		labelCoulmDel.Refresh()
 	})
+
 	///// Enter base Delete
 	Enter_Name_Del := widget.NewEntry()
 	Enter_Name_Del.SetPlaceHolder("Enter Data Delete")
+
 	/////// Finsh delete
 	butt_Finsh_Del := widget.NewButton(" Finsh Delete ", func() {
 		deleterecord(SelectTable_Del.Selected, coulmDelNames, coulmDelType, Enter_Name_Del.Text, labelCoulmDel.Text)
@@ -144,6 +150,7 @@ func main() {
 
 	/// Button back to main menu
 	butt_GoMenu_Del := widget.NewButton(" Back ", func() {
+		Enter_Name_Del.SetText("")
 		labelCoulmDel.Text = "Coulm"
 		labelCoulmDel.Refresh()
 		labelDelCom.Text = ""
@@ -151,30 +158,81 @@ func main() {
 		DeletePage.Hide()
 		Menu.Show()
 	})
+	// layout from Delete
 	HBox_Del0 := container.New(layout.NewHBoxLayout(), butt_PrevCoulmD, labelCoulmDel, butt_nextCoulmD)
 	vBox_Del := container.New(layout.NewVBoxLayout(), DeletePage_title, SelectTable_Del, HBox_Del0, Enter_Name_Del,
 		butt_Finsh_Del, butt_GoMenu_Del, labelDelCom)
 	DeletePage.SetContent(vBox_Del)
 
 	//////////////////////////////////////////////////////////////////(Form 5)########## body of Show data page
+	icolShow := 1
+	var coulmShowNames []string
+	var coulmShowTypes []string
+	labelCoulmShow := widget.NewLabel("Coulm")
+	/// Lable display the select
+	LableShowData := widget.NewLabel("")
 
-	/// Button back to main menu
+	/// choose the table you want Show the data
+	Table_NameSh := getTablesName()
+	SelectTable_Sh := widget.NewSelect(Table_NameSh, func(s string) {
+		coulmShowTypes, coulmShowNames, err = coulmName_DataType(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		labelCoulmShow.Text = coulmShowNames[1]
+		labelCoulmShow.Refresh()
+	})
+
+	//// Button next the coulm
+	butt_nextCoulmSh := widget.NewButton(" Next Coulm ", func() {
+		icolShow++
+		labelCoulmShow.Text = coulmShowNames[icolShow%len(coulmShowNames)]
+		labelCoulmShow.Refresh()
+	})
+
+	//// Button Previc the coulm
+	butt_PrevCoulmSh := widget.NewButton(" Previc Coulm ", func() {
+		icolShow--
+		labelCoulmShow.Text = coulmShowNames[icolShow%len(coulmShowNames)]
+		labelCoulmShow.Refresh()
+	})
+
+	///// Text Enter base Show
+	Enter_Name_Show := widget.NewEntry()
+	Enter_Name_Show.SetPlaceHolder("Enter Data Show")
+	var data string
+	/// Button Show data
+	butt_ShowFr := widget.NewButton(" Show ", func() {
+		data = selectrecord(SelectTable_Sh.Selected, coulmShowNames, coulmShowTypes, Enter_Name_Show.Text, labelCoulmShow.Text)
+
+		LableShowData.Text = data
+		LableShowData.Refresh()
+	})
+	SelectTable_Sh.SetSelected("Select table")
+
+	/// Button bake to main menu
 	butt_GoMenu_Sh := widget.NewButton(" Back ", func() {
-
+		Enter_Name_Show.SetText("")
+		labelCoulmShow.Text = "Coulm"
+		LableShowData.Text = ""
+		LableShowData.Refresh()
 		ShowPage.Hide()
 		Menu.Show()
 	})
-	vBox_Sh := container.New(layout.NewVBoxLayout(), ShowPage_title, butt_GoMenu_Sh)
+
+	/// Layout Form Show
+	HBox_sh0 := container.New(layout.NewHBoxLayout(), butt_PrevCoulmSh, labelCoulmShow, butt_nextCoulmSh)
+	HBox_sh1 := container.New(layout.NewHBoxLayout(), butt_GoMenu_Sh, butt_ShowFr)
+	vBox_Sh := container.New(layout.NewVBoxLayout(), ShowPage_title, SelectTable_Sh, HBox_sh0, Enter_Name_Show, HBox_sh1, LableShowData)
 	ShowPage.SetContent(vBox_Sh)
 
 	//////////////////////////////////////////////////////////////////(Form 4)########## body of Update data page
 	labelUpCom := widget.NewLabel("")
-
 	var butt_Next_Up *widget.Button
+
 	// lable change
 	label_Name_Up := widget.NewLabel("")
 	label_type_Up := widget.NewLabel("")
-	/// choose the table you want Update the data
 	Table_Name := getTablesName()
 	var coulmUpNames []string
 	var coulmUpTypes []string
@@ -183,8 +241,11 @@ func main() {
 	var valuesUp []string
 	labelCoulm := widget.NewLabel("Coulm")
 
+	/// text the coulm your base chnge
 	label_UPType := widget.NewLabel(" Type change")
 	label_UPType.Refresh()
+
+	/// choose the table you want Update the data
 	SelectTable_UP := widget.NewSelect(Table_Name, func(s string) {
 		coulmUpTypes, coulmUpNames, err = coulmName_DataType(s)
 
@@ -204,16 +265,28 @@ func main() {
 	})
 	SelectTable_UP.SetSelected("Select table")
 
-	/// choose the table you want Update the data
+	///// Enter base change
+	Enter_Name_Up := widget.NewEntry()
+	Enter_Name_Up.SetPlaceHolder("Enter base Data change")
 
+	// lable fixed
+	label_TextName_Up := widget.NewLabel("  Name  ")
+	label_Space_Up := widget.NewLabel("             ")
+	label_TextType_Up := widget.NewLabel("  Type  ")
+
+	///// Enter update value
+	Enter_UpNamevalue := widget.NewEntry()
+	Enter_UpNamevalue.SetPlaceHolder("Enter update Value")
+
+	//// Button next the coulm
 	butt_nextCoulm := widget.NewButton(" Next Coulm ", func() {
 		icol++
-
 		labelCoulm.Text = coulmUpNames[icol%len(coulmUpNames)]
 		label_UPType.Text = coulmUpTypes[icol%len(coulmUpNames)]
 		label_UPType.Refresh()
 		labelCoulm.Refresh()
 	})
+	//// Button previc the coulm
 	butt_PrevCoulm := widget.NewButton(" Previc Coulm ", func() {
 		icol--
 		labelCoulm.Text = coulmUpNames[icol%len(coulmUpNames)]
@@ -221,22 +294,8 @@ func main() {
 		label_UPType.Refresh()
 		labelCoulm.Refresh()
 	})
-
-	///// Enter base change
-	Enter_Name_Up := widget.NewEntry()
-	Enter_Name_Up.SetPlaceHolder("Enter base Data change")
-	/////////// lable type
-
-	// lable fixed
-	label_TextName_Up := widget.NewLabel("  Name  ")
-	label_Space_Up := widget.NewLabel("             ")
-	label_TextType_Up := widget.NewLabel("  Type  ")
-	///// Enter update value
-	Enter_UpNamevalue := widget.NewEntry()
-	Enter_UpNamevalue.SetPlaceHolder("Enter update Value")
-	///// Button Next to Coulm
+	///// Button Next Coulm table
 	butt_Next_Up = widget.NewButton(" Next ", func() {
-
 		valuesUp = append(valuesUp, Enter_UpNamevalue.Text)
 		if iUp >= len(coulmUpNames) {
 			butt_Next_Up.Disable()
@@ -251,14 +310,11 @@ func main() {
 			}
 		}
 		Enter_UpNamevalue.SetText("")
-
 	})
-
 	///// Button Finsh coulm table
 	butt_Finsh_Up := widget.NewButton(" Finsh ", func() {
 		valuesUp = append(valuesUp, Enter_UpNamevalue.Text)
 		update(SelectTable_UP.Selected, coulmUpNames, coulmUpTypes, valuesUp, Enter_Name_Up.Text, labelCoulm.Text)
-
 		coulmUpNames = nil
 		coulmUpTypes = nil
 		valuesUp = nil
@@ -271,13 +327,18 @@ func main() {
 		labelCoulm.Refresh()
 		labelUpCom.Refresh()
 	})
+
 	/// Button back to main menu
 	butt_GoMenu_Up := widget.NewButton(" Back ", func() {
+		Enter_UpNamevalue.SetText("")
+		Enter_Name_Up.SetText("")
 		labelUpCom.Text = ""
 		labelUpCom.Refresh()
 		UpdatePage.Hide()
 		Menu.Show()
 	})
+
+	///Layout from Update
 	HBox_Up1 := container.New(layout.NewHBoxLayout(), butt_PrevCoulm, labelCoulm, butt_nextCoulm)
 	HBox_Up2 := container.New(layout.NewHBoxLayout(), label_Space_Up, label_TextName_Up, label_Space_Up, label_TextType_Up)
 	HBox_Up3 := container.New(layout.NewHBoxLayout(), label_Space_Up, label_Name_Up, label_Space_Up, label_type_Up)
@@ -288,17 +349,18 @@ func main() {
 
 	//////////////////////////////////////////////////////////////////(Form 3)########## body of Insert data page
 	labelInCom := widget.NewLabel("")
-
 	var butt_Next_In *widget.Button
 	Tables := getTablesName()
-	/// choose the table you want insert the data
 	var coulmnNames []string
 	var coulmnTypes []string
 	i := 1
 	var values []string
+
 	// lable change
 	label_Name_in := widget.NewLabel("")
 	label_type_in := widget.NewLabel("")
+
+	/// choose the table you want insert the data
 	Coulm_Type_In := widget.NewSelect(Tables, func(s string) {
 		coulmnTypes, coulmnNames, err = coulmName_DataType(s)
 		if err != nil {
@@ -312,7 +374,8 @@ func main() {
 		butt_Next_In.Enable()
 	})
 	Coulm_Type_In.SetSelected("Select table")
-	// lable fixed
+
+	// lable fixed Name and type of the coulm
 	label_TextName_in := widget.NewLabel("  Name  ")
 	label_Space_in := widget.NewLabel("             ")
 	label_TextType_in := widget.NewLabel("  Type  ")
@@ -320,8 +383,8 @@ func main() {
 	/// textbox inter data in table
 	Enter_Name_In := widget.NewEntry()
 	Enter_Name_In.SetPlaceHolder("Enter Data")
-	///// Button Next to Coulm
 
+	///// Button Next to Coulm
 	butt_Next_In = widget.NewButton(" Next ", func() {
 		values = append(values, Enter_Name_In.Text)
 		if i >= len(coulmnNames) {
@@ -350,20 +413,23 @@ func main() {
 		coulmnTypes = nil
 		values = nil
 	})
+
 	/////// Button back to main menu
 	butt_GoMenu_In := widget.NewButton(" Back ", func() {
+		Enter_Name_In.SetText("")
 		labelInCom.Text = ""
 		labelInCom.Refresh()
 		Menu.Show()
 		InsertPage.Hide()
 	})
+
+	/// Layout Form Insert
 	HBox_In1 := container.New(layout.NewHBoxLayout(), label_Space_in, label_TextName_in, label_Space_in, label_TextType_in)
 	HBox_In2 := container.New(layout.NewHBoxLayout(), label_Space_in, label_Name_in, label_Space_in, label_type_in)
 	HBox_In3 := container.New(layout.NewHBoxLayout(), butt_Next_In, butt_Finsh_In)
 	vBox_In := container.New(layout.NewVBoxLayout(), InsertPage_title, Coulm_Type_In, HBox_In1, HBox_In2, Enter_Name_In,
 		HBox_In3, butt_GoMenu_In, labelInCom)
 	InsertPage.SetContent(vBox_In)
-
 	//////////////////////////////////////////////////////////////////(Form 2)########## body of creat table page
 	labelCreateCom := widget.NewLabel("")
 
@@ -371,19 +437,24 @@ func main() {
 	Entry_Table_Name := widget.NewEntry()
 	Entry_Table_Name.SetPlaceHolder("Enter Teble Name")
 	var tname string
+
 	///// Button create table
 	butt_CreatTable := widget.NewButton(" Create Table ", func() {
 		tname = Entry_Table_Name.Text
 	})
+
 	////// text box entry name coulm and choose the type
 	coulmHeader := []string{}
 	coulmType := []string{}
 
+	/// Text name coulm in table
 	Coulm_Name := widget.NewEntry()
 	Coulm_Name.SetPlaceHolder("Enter Coulm Name")
 
+	/// select coulm type
 	Coulm_Type := widget.NewSelect([]string{"Text", "int", "boolean"}, func(s string) {})
 	Coulm_Type.SetSelected("Text")
+
 	///// Button Next to Coulm
 	butt_Next := widget.NewButton(" Next ", func() {
 		coulmHeader = append(coulmHeader, Coulm_Name.Text)
@@ -391,6 +462,7 @@ func main() {
 		Coulm_Name.SetText("")
 		Coulm_Type.SetSelected("Text")
 	})
+
 	///// Button Finsh coulm table
 	butt_Finsh := widget.NewButton(" Finsh ", func() {
 		labelCreateCom.Text = "Complet create table"
@@ -402,14 +474,17 @@ func main() {
 		coulmHeader = nil
 		coulmType = nil
 	})
+
 	/////// Button back to main menu
 	butt_GoMenu_tab := widget.NewButton(" Back ", func() {
-		Tables = getTablesName()
+		Entry_Table_Name.SetText("")
+		Entry_Table_Name.SetText("")
 		labelCreateCom.Text = ""
 		labelCreateCom.Refresh()
 		AddTable.Hide()
 		Menu.Show()
 	})
+
 	///// layout the create table page
 	HBox := container.New(layout.NewHBoxLayout(), butt_Next, butt_Finsh)
 	vBox := container.New(layout.NewVBoxLayout(), CraeteTable_title, Entry_Table_Name, butt_CreatTable,
@@ -422,27 +497,31 @@ func main() {
 		AddTable.Show()
 		Menu.Hide()
 	})
+
 	///// button Insert data table in main menu page
 	butt_Insert := widget.NewButton("  Insert Data  ", func() {
-		//	Tables = getTablesName()
 		InsertPage.Show()
 		Menu.Hide()
 	})
+
 	///// button update data table in main menu page
 	butt_update := widget.NewButton("  Update Data  ", func() {
 		UpdatePage.Show()
 		Menu.Hide()
 	})
+
 	///// button Show data table in main menu page
 	butt_Show := widget.NewButton("  Show Data   ", func() {
 		ShowPage.Show()
 		Menu.Hide()
 	})
+
 	///// button delete data table in main menu page
 	butt_delete := widget.NewButton("  Delete Data   ", func() {
 		DeletePage.Show()
 		Menu.Hide()
 	})
+
 	//// layout main menu page
 	HBox1 := container.New(layout.NewHBoxLayout(), butt_Insert, butt_update)
 	HBox2 := container.New(layout.NewHBoxLayout(), butt_Show, butt_delete)
@@ -607,4 +686,57 @@ func deleterecord(tname string, a []string, b []string, wherevale string, wheren
 		fmt.Printf("%v", err)
 	}
 	fmt.Println(x)
+}
+
+func selectrecord(tname string, a []string, b []string, wherevale string, wherename string) string {
+	x := "SELECT * FROM `go`.`" + tname + "`"
+	i := 0
+	z := ""
+	for i < len(b) {
+		if wherename == a[i] {
+			z = b[i]
+			break
+		}
+		i++
+	}
+
+	if wherevale == "" {
+		x += ";"
+	} else {
+		x += " WHERE `" + wherename + "` = "
+		if z == "text" {
+			x += "'" + wherevale + "';"
+		} else {
+			x += wherevale + ";"
+		}
+	}
+
+	println(x)
+	res, err := db.Query(x)
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+	defer res.Close()
+	cols, _ := res.Columns()
+	sep := []byte("\t")
+	newl := []byte("\n")
+	row := make([][]byte, len(cols))
+	rowptr := make([]any, len(cols))
+	for i := range row {
+		rowptr[i] = &row[i]
+	}
+	cc := ""
+	cc += (strings.Join(cols, "\t") + "\n")
+	for res.Next() {
+
+		err := res.Scan(rowptr...)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cc += string(bytes.Join(row, sep)) + string(newl)
+	}
+	fmt.Println(cc)
+	return cc
 }
