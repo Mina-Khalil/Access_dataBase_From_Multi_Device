@@ -25,7 +25,7 @@ func main() {
 		User:   "bot",
 		Passwd: "bot",
 		Net:    "tcp",
-		Addr:   "192.168.1.11:3306",
+		Addr:   "172.20.10.5:3306",
 		DBName: "go",
 	}
 	var err error
@@ -56,6 +56,16 @@ func main() {
 	}
 	CraeteTable_title.Alignment = fyne.TextAlignCenter
 	CraeteTable_title.TextSize = 24
+
+	///// Delete data page
+	ForeignPage := GoProject.NewWindow("Foreign key")
+	ForeignPage.Resize(fyne.NewSize(400, 400))
+	ForeignPage_title := canvas.NewText("Foreign key", color.White)
+	ForeignPage_title.TextStyle = fyne.TextStyle{
+		Bold: true,
+	}
+	ForeignPage_title.Alignment = fyne.TextAlignCenter
+	ForeignPage_title.TextSize = 24
 
 	///// Insert data page
 	InsertPage := GoProject.NewWindow("Insert Data")
@@ -430,6 +440,67 @@ func main() {
 	vBox_In := container.New(layout.NewVBoxLayout(), InsertPage_title, Coulm_Type_In, HBox_In1, HBox_In2, Enter_Name_In,
 		HBox_In3, butt_GoMenu_In, labelInCom)
 	InsertPage.SetContent(vBox_In)
+
+	//////////////////////////////////////////////////////////////////(Form 2.1)########## body of Forigen key data page
+	labelForCom := widget.NewLabel("")
+	labelCoulmFor := widget.NewLabel("Coulm")
+	var coulmForeNames []string
+	Table_NameFor := getTablesName()
+	iFore := 1
+	/// choose the table you want Father the data
+	SelectTable_Fa := widget.NewSelect(Table_NameFor, func(s string) {
+	})
+	SelectTable_Fa.SetSelected("Select table")
+
+	/// choose the table you want Cild the data
+	SelectTable_Cil := widget.NewSelect(Table_NameFor, func(s string) {
+		_, coulmForeNames, err = coulmName_DataType(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+		labelCoulmFor.Text = coulmForeNames[1]
+		labelCoulmFor.Refresh()
+		iFore = 2
+
+	})
+	SelectTable_Cil.SetSelected("Select table")
+
+	//// Button next the coulm
+	butt_nextCoulmFor := widget.NewButton(" Next Coulm ", func() {
+		iFore++
+		labelCoulmFor.Text = coulmForeNames[iFore%len(coulmForeNames)]
+		labelCoulmFor.Refresh()
+	})
+	//// Button previc the coulm
+	butt_PrevCoulmFor := widget.NewButton(" Previc Coulm ", func() {
+		iFore--
+		labelCoulmFor.Text = coulmForeNames[iFore%len(coulmForeNames)]
+		labelCoulmFor.Refresh()
+	})
+
+	//// Button create foregin key
+	butt_for := widget.NewButton(" Create Foreign ", func() {
+		createtablewithfk(SelectTable_Cil.Selected, labelCoulmFor.Text, SelectTable_Fa.Selected)
+		labelForCom.Text = "Complet Operation"
+		labelForCom.Refresh()
+	})
+
+	/////// Button back to main menu
+	buttBacMe_tab := widget.NewButton(" Back ", func() {
+		labelForCom.Text = ""
+		labelForCom.Refresh()
+		labelCoulmFor.Text = "Coulm"
+		labelCoulmFor.Refresh()
+		ForeignPage.Hide()
+		Menu.Show()
+	})
+
+	/// Layout Form Foregin key
+	HBox_PrF0 := container.New(layout.NewHBoxLayout(), SelectTable_Fa, SelectTable_Cil)
+	HBox_PrF := container.New(layout.NewHBoxLayout(), butt_PrevCoulmFor, labelCoulmFor, butt_nextCoulmFor)
+	vBox_Pr := container.New(layout.NewVBoxLayout(), ForeignPage_title, HBox_PrF0, HBox_PrF, butt_for, buttBacMe_tab, labelForCom)
+	ForeignPage.SetContent(vBox_Pr)
+
 	//////////////////////////////////////////////////////////////////(Form 2)########## body of creat table page
 	labelCreateCom := widget.NewLabel("")
 
@@ -485,10 +556,20 @@ func main() {
 		Menu.Show()
 	})
 
+	/////// Button back to main menu
+	butt_GoFore_tab := widget.NewButton(" Create Foreign ", func() {
+		Entry_Table_Name.SetText("")
+		Entry_Table_Name.SetText("")
+		labelCreateCom.Text = ""
+		labelCreateCom.Refresh()
+		AddTable.Hide()
+		ForeignPage.Show()
+	})
+
 	///// layout the create table page
 	HBox := container.New(layout.NewHBoxLayout(), butt_Next, butt_Finsh)
 	vBox := container.New(layout.NewVBoxLayout(), CraeteTable_title, Entry_Table_Name, butt_CreatTable,
-		widget.NewSeparator(), Coulm_Name, Coulm_Type, HBox, butt_GoMenu_tab, labelCreateCom)
+		widget.NewSeparator(), Coulm_Name, Coulm_Type, HBox, butt_GoFore_tab, butt_GoMenu_tab, labelCreateCom)
 	AddTable.SetContent(vBox)
 
 	//////////////////////////////////////////////////////////////////(Form 1)########## body of main menu page
@@ -533,7 +614,7 @@ func main() {
 
 ///// function create table used on button finsh in create table page
 func createtable(tname string, a []string, b []string) (bool, error) {
-	x := "CREATE TABLE `go`.`" + tname + "`(`id` INT NOT NULL, "
+	x := "CREATE TABLE `go`.`" + tname + "`(`id` INT NOT NULL AUTO_INCREMENT, "
 	print(x)
 	i := 0
 	for i < len(a) {
@@ -739,4 +820,15 @@ func selectrecord(tname string, a []string, b []string, wherevale string, wheren
 	}
 	fmt.Println(cc)
 	return cc
+}
+
+func createtablewithfk(tname string, fk string, tfather string) (bool, error) {
+	x := "ALTER TABLE `go`.`" + tname + "` ADD CONSTRAINT " + tname + "_" + fk
+	x += "  FOREIGN KEY (`" + fk + "`) REFERENCES `go`.`" + tfather + "` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;"
+	print(x)
+	_, err := db.Exec(x)
+	if err != nil {
+		return false, fmt.Errorf("%v", err)
+	}
+	return true, nil
 }
